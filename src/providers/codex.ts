@@ -8,7 +8,7 @@ const CODEX_HOME = process.env.CODEX_HOME ?? join(homedir(), ".codex")
 const AUTH_PATH = join(CODEX_HOME, "auth.json")
 const USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
 const TOKEN_URL = "https://auth.openai.com/oauth/token"
-// OAuth client id público del Codex CLI oficial
+// Public OAuth client id of the official Codex CLI
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 const REFRESH_MARGIN_MS = 5 * 60_000
 
@@ -21,7 +21,7 @@ function jwtExpMs(token: string): number | null {
   }
 }
 
-/** Refresca el access token si caduca pronto y persiste la rotación en auth.json (igual que el CLI oficial). */
+/** Refreshes the access token if it expires soon and persists the rotation to auth.json (like the official CLI). */
 async function refreshIfNeeded(auth: any): Promise<{ token: string; authError?: string }> {
   let token: string = auth.tokens.access_token
   const refreshToken = auth.tokens?.refresh_token
@@ -41,10 +41,10 @@ async function refreshIfNeeded(auth: any): Promise<{ token: string; authError?: 
       }),
     })
   } catch {
-    return { token } // sin red: intenta con el token actual y que falle el fetch de usage
+    return { token } // no network: try with the current token and let the usage fetch fail
   }
   if (res.status === 400 || res.status === 401) {
-    return { token, authError: "Refresh rechazado: ejecuta `codex login` de nuevo" }
+    return { token, authError: "Refresh rejected: run `codex login` again" }
   }
   if (!res.ok) return { token }
 
@@ -68,7 +68,7 @@ function fmtTokens(n: number): string {
   return String(n)
 }
 
-/** Actividad de hoy y racha desde wham/profiles/me; opcional, nunca rompe el panel */
+/** Today's activity and streak from wham/profiles/me; optional, never breaks the panel */
 async function fetchActivity(headers: Record<string, string>): Promise<UsageRow | null> {
   try {
     const res = await fetch("https://chatgpt.com/backend-api/wham/profiles/me", { headers })
@@ -79,9 +79,9 @@ async function fetchActivity(headers: Record<string, string>): Promise<UsageRow 
     const bucket = (stats.daily_usage_buckets ?? []).find((b: any) => b?.start_date === today)
     const parts = [`${fmtTokens(bucket?.tokens ?? 0)} tokens`]
     if (typeof stats.current_streak_days === "number" && stats.current_streak_days > 0) {
-      parts.push(`racha ${stats.current_streak_days}d`)
+      parts.push(`streak ${stats.current_streak_days}d`)
     }
-    return { label: "Hoy", pct: null, detail: parts.join(" · ") }
+    return { label: "Today", pct: null, detail: parts.join(" · ") }
   } catch {
     return null
   }
@@ -90,15 +90,15 @@ async function fetchActivity(headers: Record<string, string>): Promise<UsageRow 
 export async function fetchCodex(): Promise<PanelData> {
   const title = CODEX_TITLE
   const file = Bun.file(AUTH_PATH)
-  if (!(await file.exists())) return { title, rows: [], note: "Ejecuta `codex login` para conectar tu cuenta" }
+  if (!(await file.exists())) return { title, rows: [], note: "Run `codex login` to connect your account" }
 
   let auth: any
   try {
     auth = await file.json()
   } catch {
-    return { title, rows: [], note: "No pude leer ~/.codex/auth.json" }
+    return { title, rows: [], note: "Couldn't read ~/.codex/auth.json" }
   }
-  if (!auth?.tokens?.access_token) return { title, rows: [], note: "Sin token: ejecuta `codex login`" }
+  if (!auth?.tokens?.access_token) return { title, rows: [], note: "No token: run `codex login`" }
 
   const { token, authError } = await refreshIfNeeded(auth)
   if (authError) return { title, rows: [], note: authError }
@@ -113,16 +113,16 @@ export async function fetchCodex(): Promise<PanelData> {
   try {
     ;[res, activity] = await Promise.all([fetch(USAGE_URL, { headers }), fetchActivity(headers)])
   } catch {
-    return { title, rows: [], note: "Sin conexión con chatgpt.com" }
+    return { title, rows: [], note: "No connection to chatgpt.com" }
   }
-  if (res.status === 401) return { title, rows: [], note: "Token caducado: ejecuta `codex login`" }
-  if (!res.ok) return { title, rows: [], note: `Error ${res.status} del endpoint de usage` }
+  if (res.status === 401) return { title, rows: [], note: "Token expired: run `codex login`" }
+  if (!res.ok) return { title, rows: [], note: `Error ${res.status} from the usage endpoint` }
 
   let data: any
   try {
     data = await res.json()
   } catch {
-    return { title, rows: [], note: "Respuesta no válida del endpoint" }
+    return { title, rows: [], note: "Invalid response from the endpoint" }
   }
 
   const rows: UsageRow[] = []
@@ -138,8 +138,8 @@ export async function fetchCodex(): Promise<PanelData> {
         : undefined
     rows.push({ label, pct: w.used_percent, resetsAt, windowMs })
   }
-  window("Sesión 5h", data?.rate_limit?.primary_window)
-  window("Semana", data?.rate_limit?.secondary_window)
+  window("Session 5h", data?.rate_limit?.primary_window)
+  window("Week", data?.rate_limit?.secondary_window)
   window("Code review", data?.code_review_rate_limit?.primary_window)
   for (const extra of data?.additional_rate_limits ?? []) {
     const name = extra?.name ?? extra?.display_name ?? "Extra"
@@ -148,18 +148,18 @@ export async function fetchCodex(): Promise<PanelData> {
 
   const credits = data?.credits
   if (credits && (credits.unlimited || credits.has_credits)) {
-    // En planes Team/Business el saldo es un pool del workspace y la API no lo expone (balance: null)
+    // On Team/Business plans the balance is a workspace pool the API doesn't expose (balance: null)
     const balance = credits.balance != null && !Number.isNaN(Number(credits.balance)) ? String(credits.balance) : null
     rows.push({
-      label: "Créditos",
+      label: "Credits",
       pct: null,
       detail: credits.unlimited
-        ? "ilimitados"
+        ? "unlimited"
         : credits.overage_limit_reached
-          ? "límite de overage alcanzado"
+          ? "overage limit reached"
           : balance !== null
-            ? `${balance} restantes`
-            : "pool del workspace · sin saldo vía API",
+            ? `${balance} remaining`
+            : "workspace pool · no balance via API",
     })
   }
 
@@ -168,17 +168,17 @@ export async function fetchCodex(): Promise<PanelData> {
     rows.push({
       label: "Resets 5h",
       pct: null,
-      detail: resets === 1 ? "1 disponible" : `${resets} disponibles`,
+      detail: resets === 1 ? "1 available" : `${resets} available`,
     })
   }
 
   const individualLimit = data?.spend_control?.individual_limit
   if (individualLimit != null) {
-    rows.push({ label: "Límite mes", pct: null, detail: String(individualLimit) })
+    rows.push({ label: "Monthly limit", pct: null, detail: String(individualLimit) })
   }
 
   if (activity) rows.push(activity)
 
-  if (rows.length === 0) return { title, rows, note: "El endpoint no devolvió ventanas de usage" }
+  if (rows.length === 0) return { title, rows, note: "The endpoint returned no usage windows" }
   return { title, rows }
 }

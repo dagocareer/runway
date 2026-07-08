@@ -9,7 +9,7 @@ const KEYCHAIN_SERVICE = "Claude Code-credentials"
 
 let cachedUserAgent: string | null = null
 
-/** El endpoint exige un User-Agent claude-code/<v>; intenta usar la versión instalada. */
+/** The endpoint requires a claude-code/<v> User-Agent; try the installed version. */
 async function userAgent(): Promise<string> {
   if (cachedUserAgent) return cachedUserAgent
   let version = "2.0.0"
@@ -62,7 +62,7 @@ const centsToUsd = (cents: number) => `$${(cents / 100).toFixed(2)}`
 export async function fetchClaude(): Promise<PanelData> {
   const title = CLAUDE_TITLE
   const token = await getToken()
-  if (!token) return { title, rows: [], note: "Sin credenciales: inicia sesión en Claude Code" }
+  if (!token) return { title, rows: [], note: "No credentials: sign in to Claude Code" }
 
   let res: Response
   try {
@@ -75,17 +75,17 @@ export async function fetchClaude(): Promise<PanelData> {
       },
     })
   } catch {
-    return { title, rows: [], note: "Sin conexión con api.anthropic.com" }
+    return { title, rows: [], note: "No connection to api.anthropic.com" }
   }
-  if (res.status === 401) return { title, rows: [], note: "Token caducado: abre Claude Code para refrescarlo" }
-  if (res.status === 429) return { title, rows: [], note: "Rate limit del endpoint, reintento en el próximo ciclo" }
-  if (!res.ok) return { title, rows: [], note: `Error ${res.status} del endpoint de usage` }
+  if (res.status === 401) return { title, rows: [], note: "Token expired: open Claude Code to refresh it" }
+  if (res.status === 429) return { title, rows: [], note: "Endpoint rate limit, retrying next cycle" }
+  if (!res.ok) return { title, rows: [], note: `Error ${res.status} from the usage endpoint` }
 
   let data: any
   try {
     data = await res.json()
   } catch {
-    return { title, rows: [], note: "Respuesta no válida del endpoint" }
+    return { title, rows: [], note: "Invalid response from the endpoint" }
   }
 
   const HOUR = 3_600_000
@@ -100,10 +100,10 @@ export async function fetchClaude(): Promise<PanelData> {
       windowMs,
     })
   }
-  window("Sesión 5h", data.five_hour, 5 * HOUR)
-  window("Semana", data.seven_day, 7 * 24 * HOUR)
-  window("Semana Opus", data.seven_day_opus, 7 * 24 * HOUR)
-  window("Semana Sonnet", data.seven_day_sonnet, 7 * 24 * HOUR)
+  window("Session 5h", data.five_hour, 5 * HOUR)
+  window("Week", data.seven_day, 7 * 24 * HOUR)
+  window("Week Opus", data.seven_day_opus, 7 * 24 * HOUR)
+  window("Week Sonnet", data.seven_day_sonnet, 7 * 24 * HOUR)
 
   const extra = data.extra_usage
   if (extra?.is_enabled) {
@@ -116,11 +116,11 @@ export async function fetchClaude(): Promise<PanelData> {
         used !== null && limit !== null
           ? `${centsToUsd(used)} / ${centsToUsd(limit)}`
           : used !== null
-            ? `${centsToUsd(used)} usados`
-            : "activado",
+            ? `${centsToUsd(used)} used`
+            : "enabled",
     })
   }
 
-  if (rows.length === 0) return { title, rows, note: "El endpoint no devolvió ventanas de usage" }
+  if (rows.length === 0) return { title, rows, note: "The endpoint returned no usage windows" }
   return { title, rows }
 }

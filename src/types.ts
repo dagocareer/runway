@@ -1,18 +1,18 @@
 export interface UsageRow {
   label: string
-  /** 0-100; null = fila informativa sin barra (créditos, etc.) */
+  /** 0-100; null = info row without a bar (credits, etc.) */
   pct: number | null
-  /** Texto fijo a la derecha cuando no hay countdown */
+  /** Fixed text on the right when there's no countdown */
   detail?: string
-  /** Epoch ms; si está presente se pinta una cuenta atrás viva */
+  /** Epoch ms; when present a live countdown is drawn */
   resetsAt?: number
-  /** Duración total de la ventana en ms; permite calcular el ritmo de gasto */
+  /** Total window duration in ms; lets us compute the spend pace */
   windowMs?: number
 }
 
 export interface PanelData {
   title: string
   rows: UsageRow[]
-  /** Mensaje (error o hint) que se muestra en lugar de las filas */
+  /** Message (error or hint) shown in place of the rows */
   note?: string
 }

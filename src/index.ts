@@ -7,15 +7,16 @@ import {
   t,
   fg,
   bold,
-  brightBlack,
   type StyledText,
+  type ThemeMode,
 } from "@opentui/core"
 import { fetchClaude, CLAUDE_TITLE } from "./providers/claude"
 import { fetchCodex, CODEX_TITLE } from "./providers/codex"
 import type { PanelData } from "./types"
 import { rowText, noteText } from "./ui"
+import { activeTheme, setTheme } from "./theme"
 
-const REFRESH_MS = 180_000 // mínimo seguro para el endpoint de Anthropic
+const REFRESH_MS = 180_000 // safe minimum for the Anthropic endpoint
 const MANUAL_THROTTLE_MS = 10_000
 
 interface PanelState {
@@ -24,8 +25,8 @@ interface PanelState {
 }
 
 const state = {
-  claude: { data: { title: CLAUDE_TITLE, rows: [], note: "Cargando…" }, staleNote: null } as PanelState,
-  codex: { data: { title: CODEX_TITLE, rows: [], note: "Cargando…" }, staleNote: null } as PanelState,
+  claude: { data: { title: CLAUDE_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
+  codex: { data: { title: CODEX_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
   lastUpdated: null as number | null,
   fetching: false,
   lastManual: 0,
@@ -35,6 +36,11 @@ const CLAUDE_ACCENT = "#d97757"
 const CODEX_ACCENT = "#74aa9c"
 
 const renderer = await createCliRenderer({ exitOnCtrlC: true, targetFps: 10 })
+
+// Terminal theme (light/dark). On terminals set to "system auto" this follows
+// the OS appearance. We briefly wait for detection so the first frame already
+// uses the right theme; if the terminal doesn't answer, we stay on dark.
+setTheme(renderer.themeMode ?? (await renderer.waitForThemeMode(200)))
 
 const container = new BoxRenderable(renderer, {
   flexDirection: "column",
@@ -50,7 +56,7 @@ const header = new ASCIIFontRenderable(renderer, {
 const claudeBox = new BoxRenderable(renderer, {
   border: true,
   borderStyle: "rounded",
-  borderColor: "#444444",
+  borderColor: activeTheme().border,
   title: ` ✳ ${CLAUDE_TITLE} `,
   titleColor: CLAUDE_ACCENT,
   paddingX: 1,
@@ -60,7 +66,7 @@ const claudeBox = new BoxRenderable(renderer, {
 const codexBox = new BoxRenderable(renderer, {
   border: true,
   borderStyle: "rounded",
-  borderColor: "#444444",
+  borderColor: activeTheme().border,
   title: ` ⬡ ${CODEX_TITLE} `,
   titleColor: CODEX_ACCENT,
   paddingX: 1,
@@ -76,7 +82,7 @@ renderer.root.add(container)
 
 function panelLines(panel: PanelState, now: number, accent: string): StyledText[] {
   if (panel.data.rows.length > 0) return panel.data.rows.map((row) => rowText(row, now, accent))
-  return [noteText(panel.data.note ?? "Sin datos")]
+  return [noteText(panel.data.note ?? "No data")]
 }
 
 function syncPanel(box: BoxRenderable, lines: StyledText[]) {
@@ -100,32 +106,47 @@ const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", 
 
 function fmtAgo(since: number, now: number): string {
   const s = Math.floor((now - since) / 1000)
-  if (s < 5) return "ahora"
-  if (s < 60) return `hace ${s}s`
-  return `hace ${Math.floor(s / 60)}m`
+  if (s < 5) return "now"
+  if (s < 60) return `${s}s ago`
+  return `${Math.floor(s / 60)}m ago`
 }
 
 function draw() {
   const now = Date.now()
+  // `text` carries an explicit fg: keybind letters use `bold` alone, and
+  // OpenTUI's default foreground is white — invisible on a light terminal.
+  const { label, text } = activeTheme()
   syncPanel(claudeBox, panelLines(state.claude, now, CLAUDE_ACCENT))
   syncPanel(codexBox, panelLines(state.codex, now, CODEX_ACCENT))
   claudeBox.bottomTitle = state.claude.staleNote ? ` ⚠ ${state.claude.staleNote} `.slice(0, 58) : undefined
   codexBox.bottomTitle = state.codex.staleNote ? ` ⚠ ${state.codex.staleNote} `.slice(0, 58) : undefined
   const updated = state.lastUpdated ? fmtAgo(state.lastUpdated, now) : "—"
   const status = state.fetching
-    ? fg(CODEX_ACCENT)(` ${SPINNER[Math.floor(now / 250) % SPINNER.length]} actualizando`)
-    : brightBlack(` · ${updated}`)
-  footer.content = t` ${bold("r")} ${brightBlack("refrescar")} ${brightBlack("·")} ${bold("q")} ${brightBlack("salir")}${status}`
+    ? fg(CODEX_ACCENT)(` ${SPINNER[Math.floor(now / 250) % SPINNER.length]} updating`)
+    : label(` · ${updated}`)
+  footer.content = t` ${bold(text("r"))} ${label("refresh")} ${label("·")} ${bold(text("q"))} ${label("quit")}${status}`
 }
+
+// Repaint when the terminal theme changes (e.g. the OS switches to light while
+// in "system auto" mode). Text colors resolve on every draw(); the panel border
+// has to be updated by hand.
+function applyThemeMode(mode: ThemeMode) {
+  if (!setTheme(mode)) return
+  const { border } = activeTheme()
+  claudeBox.borderColor = border
+  codexBox.borderColor = border
+  draw()
+}
+renderer.on("theme_mode", applyThemeMode)
 
 function applyResult(panel: PanelState, next: PanelData) {
   if (next.rows.length > 0 || panel.data.rows.length === 0) {
-    // datos nuevos, o nunca hubo datos: muestra lo que haya venido (incluida la nota)
+    // fresh data, or we never had any: show whatever came back (note included)
     panel.data = next
     panel.staleNote = null
   } else {
-    // falló el refresco pero teníamos datos: consérvalos y marca el panel
-    panel.staleNote = next.note ?? "sin refrescar"
+    // refresh failed but we had data: keep it and flag the panel
+    panel.staleNote = next.note ?? "not refreshed"
   }
 }
 
@@ -160,9 +181,9 @@ renderer.keyInput.on("keypress", (key) => {
 draw()
 void refresh()
 setInterval(() => void refresh(), REFRESH_MS)
-setInterval(draw, 1000) // countdowns y reloj, sin refetch
+setInterval(draw, 1000) // countdowns and clock, without refetching
 
-// Para pruebas no interactivas: USAGE_EXIT_AFTER=<segundos>
+// For non-interactive tests: USAGE_EXIT_AFTER=<seconds>
 if (process.env.USAGE_EXIT_AFTER) {
   setTimeout(quit, Number(process.env.USAGE_EXIT_AFTER) * 1000)
 }

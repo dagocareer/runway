@@ -1,23 +1,11 @@
-import {
-  t,
-  fg,
-  bold,
-  red,
-  yellow,
-  white,
-  brightBlack,
-  italic,
-  dim,
-  type StyledText,
-} from "@opentui/core"
+import { t, fg, bold, italic, type StyledText } from "@opentui/core"
 import type { UsageRow } from "./types"
+import { activeTheme } from "./theme"
 
 const BAR_WIDTH = 18
 const LABEL_WIDTH = 13
-const TRACK_COLOR = "#3a3a3a"
-const PACE_OK_COLOR = "#4a9b5e"
 
-// Octavos de celda para el borde de la barra
+// Cell eighths for the bar's leading edge
 const PARTIALS = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"]
 
 export function fmtCountdown(resetsAt: number, now: number): string {
@@ -45,27 +33,30 @@ function bar(pct: number): { fill: string; track: string } {
 }
 
 function pctChunk(pct: number) {
+  const theme = activeTheme()
   const text = `${String(Math.round(pct)).padStart(3)}%`
-  if (pct >= 85) return bold(red(text))
-  if (pct >= 60) return bold(yellow(text))
-  return bold(white(text))
+  if (pct >= 85) return bold(theme.danger(text))
+  if (pct >= 60) return bold(theme.warn(text))
+  return bold(theme.text(text))
 }
 
-/** ▲ gastando más rápido que el tiempo de ventana, ▼ más despacio, · en ritmo */
+/** ▲ spending faster than the window's elapsed time, ▼ slower, · on pace */
 function paceChunk(row: UsageRow, now: number) {
-  if (row.pct === null || !row.resetsAt || !row.windowMs) return dim(" ")
+  const theme = activeTheme()
+  if (row.pct === null || !row.resetsAt || !row.windowMs) return theme.pace(" ")
   const elapsed = 1 - (row.resetsAt - now) / row.windowMs
-  if (elapsed <= 0 || elapsed > 1) return dim(" ")
+  if (elapsed <= 0 || elapsed > 1) return theme.pace(" ")
   const diff = row.pct / 100 - elapsed
-  if (diff > 0.05) return red("▲")
-  if (diff < -0.05) return fg(PACE_OK_COLOR)("▼")
-  return dim("·")
+  if (diff > 0.05) return theme.danger("▲")
+  if (diff < -0.05) return theme.paceOk("▼")
+  return theme.pace("·")
 }
 
 export function rowText(row: UsageRow, now: number, accent: string): StyledText {
+  const theme = activeTheme()
   const label = row.label.padEnd(LABEL_WIDTH).slice(0, LABEL_WIDTH)
   if (row.pct === null) {
-    return t`${brightBlack(label)} ${white(row.detail ?? "")}`
+    return t`${theme.label(label)} ${theme.text(row.detail ?? "")}`
   }
   const { fill, track } = bar(row.pct)
   const right = row.resetsAt
@@ -73,9 +64,9 @@ export function rowText(row: UsageRow, now: number, accent: string): StyledText 
     : row.detail
       ? `  ${row.detail}`
       : ""
-  return t`${brightBlack(label)} ${fg(accent)(fill)}${fg(TRACK_COLOR)(track)} ${pctChunk(row.pct)} ${paceChunk(row, now)}${brightBlack(right)}`
+  return t`${theme.label(label)} ${fg(accent)(fill)}${theme.track(track)} ${pctChunk(row.pct)} ${paceChunk(row, now)}${theme.label(right)}`
 }
 
 export function noteText(note: string): StyledText {
-  return t`${italic(brightBlack(note))}`
+  return t`${italic(activeTheme().label(note))}`
 }
