@@ -1,8 +1,8 @@
 # runway
 
 Mini TUI (built with [OpenTUI](https://opentui.com/)) that shows live usage for your
-**Claude Max** and **Codex (ChatGPT)** subscriptions: 5h session, weekly limits,
-extra usage credits, and credits.
+**Claude Max** and **Codex (ChatGPT)** subscriptions — weekly limits, extra usage
+credits — plus your **OpenRouter** credit balance.
 
 ```
 ╭─ Claude Max ──────────────────────────────╮
@@ -11,9 +11,12 @@ extra usage credits, and credits.
 │ Extra usage  ██████░░░░░░░░  42%  $83.85 / $200.00
 ╰───────────────────────────────────────────╯
 ╭─ Codex (ChatGPT) ─────────────────────────╮
-│ Session 5h   ░░░░░░░░░░░░░░   1%  4h 59m  │
-│ Week         ███████░░░░░░░  52%  5d 12h  │
-│ Credits      unlimited                    │
+│ Week         ██████░░░░░░░░  65%  3d 12h  │
+│ Credits      workspace pool · no balance via API
+│ Today        12.3k tokens · streak 4d     │
+╰───────────────────────────────────────────╯
+╭─ OpenRouter ──────────────────────────────╮
+│ Credits      $12.34 left                  │
 ╰───────────────────────────────────────────╯
  r refresh · q quit · 12s ago
 ```
@@ -28,6 +31,10 @@ The interface follows your terminal's light/dark theme, including terminals set 
   entry `Claude Code-credentials`; fallback: `~/.claude/.credentials.json` or
   `CLAUDE_CODE_OAUTH_TOKEN`)
 - A **Codex CLI** session (`codex login` creates `~/.codex/auth.json`)
+- An **OpenRouter** key, resolved in this order: the macOS Keychain entry written by
+  `convoy auth openrouter` (a management key, which unlocks the exact balance), then
+  `OPENROUTER_API_KEY`, then the key opencode already stores
+  (`~/.local/share/opencode/auth.json`)
 
 ## Usage
 
@@ -48,6 +55,7 @@ You can also use `bun link`, which makes `runway` available on Bun's PATH.
 |---|---|---|
 | Claude Max | `GET https://api.anthropic.com/api/oauth/usage` | Bearer from the Keychain + `anthropic-beta: oauth-2025-04-20` + `User-Agent: claude-code/<v>` |
 | Codex | `GET https://chatgpt.com/backend-api/wham/usage` | Bearer from `~/.codex/auth.json` + `chatgpt-account-id` header |
+| OpenRouter | `GET https://openrouter.ai/api/v1/credits` (fallback: `/api/v1/key`) | Bearer from the Keychain, `OPENROUTER_API_KEY`, or opencode |
 
 If the Codex token expires, it's refreshed against `https://auth.openai.com/oauth/token`
 (same flow and client id as the official CLI) and persisted to `auth.json`.
@@ -63,10 +71,17 @@ If the Codex token expires, it's refreshed against `https://auth.openai.com/oaut
   "Token expired", open Claude Code.
 - The Codex refresh token **rotates** on every refresh: don't share `auth.json` across
   machines at the same time.
+- ChatGPT no longer has a 5h session window: the primary window **is** the weekly one
+  (`limit_window_seconds: 604800`, `secondary_window: null`). Row labels follow
+  `limit_window_seconds`, so the panel stays correct if the 5h window ever comes back,
+  and the old 5h reset credits only appear when the API marks them as applicable.
 - Claude's extra usage arrives in cents of a dollar; it's shown as `$used / $limit`.
 - On ChatGPT Team/Business plans, Codex credits are a shared workspace pool and the API
   returns `balance: null` — the balance is only visible on the admin's billing page at
-  chatgpt.com. The panel shows the pool status, the available window resets, and today's
-  activity (from `wham/profiles/me`).
-- Tokens are only sent to `api.anthropic.com`, `chatgpt.com`, and `auth.openai.com`.
-  No telemetry, no third parties.
+  chatgpt.com. The panel shows the pool status and today's activity
+  (from `wham/profiles/me`).
+- OpenRouter management keys can read `/credits`, so the panel shows the exact balance
+  (`total_credits − total_usage`). A regular inference key gets a 403 there and falls
+  back to `/key`: the key's remaining limit, or this month's spend when the key has none.
+- Keys and tokens are only sent to `api.anthropic.com`, `chatgpt.com`,
+  `auth.openai.com`, and `openrouter.ai`. No telemetry, no third parties.

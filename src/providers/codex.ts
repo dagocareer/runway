@@ -126,7 +126,20 @@ export async function fetchCodex(): Promise<PanelData> {
   }
 
   const rows: UsageRow[] = []
-  const window = (label: string, w: any) => {
+  // ChatGPT no longer has a 5h session window: the primary window IS the
+  // weekly one (limit_window_seconds 604800, secondary_window null). Label
+  // from the actual duration so old and new shapes both read correctly.
+  const windowLabel = (w: any, fallback: string): string => {
+    const s = w?.limit_window_seconds
+    if (s === 18_000) return "Session 5h"
+    if (s === 604_800) return "Week"
+    if (typeof s === "number" && s > 0) {
+      const h = Math.round(s / 3600)
+      return h < 48 ? `Window ${h}h` : `Window ${Math.round(h / 24)}d`
+    }
+    return fallback
+  }
+  const window = (label: string, w: any, derive = false) => {
     if (!w || typeof w.used_percent !== "number") return
     let resetsAt: number | undefined
     if (typeof w.reset_at === "number" && w.reset_at > 0) {
@@ -136,10 +149,10 @@ export async function fetchCodex(): Promise<PanelData> {
       typeof w.limit_window_seconds === "number" && w.limit_window_seconds > 0
         ? w.limit_window_seconds * 1000
         : undefined
-    rows.push({ label, pct: w.used_percent, resetsAt, windowMs })
+    rows.push({ label: derive ? windowLabel(w, label) : label, pct: w.used_percent, resetsAt, windowMs })
   }
-  window("Session 5h", data?.rate_limit?.primary_window)
-  window("Week", data?.rate_limit?.secondary_window)
+  window("Session 5h", data?.rate_limit?.primary_window, true)
+  window("Week", data?.rate_limit?.secondary_window, true)
   window("Code review", data?.code_review_rate_limit?.primary_window)
   for (const extra of data?.additional_rate_limits ?? []) {
     const name = extra?.name ?? extra?.display_name ?? "Extra"
@@ -163,10 +176,16 @@ export async function fetchCodex(): Promise<PanelData> {
     })
   }
 
-  const resets = data?.rate_limit_reset_credits?.available_count
+  // Reset credits were a 5h-window feature: with the weekly window the API
+  // reports how many are applicable separately (usually 0), so prefer that.
+  const resetCredits = data?.rate_limit_reset_credits
+  const resets =
+    typeof resetCredits?.applicable_available_count === "number"
+      ? resetCredits.applicable_available_count
+      : resetCredits?.available_count
   if (typeof resets === "number" && resets > 0) {
     rows.push({
-      label: "Resets 5h",
+      label: "Resets",
       pct: null,
       detail: resets === 1 ? "1 available" : `${resets} available`,
     })
