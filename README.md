@@ -4,22 +4,9 @@ Mini TUI (built with [OpenTUI](https://opentui.com/)) that shows live usage for 
 **Claude Max** and **Codex (ChatGPT)** subscriptions — weekly limits, extra usage
 credits — plus your **OpenRouter** credit balance.
 
-```
-╭─ Claude Max ──────────────────────────────╮
-│ Session 5h   ██████░░░░░░░░  40%  4h 25m  │
-│ Week         ████████░░░░░░  56%  2d 8h   │
-│ Extra usage  ██████░░░░░░░░  42%  $83.85 / $200.00
-╰───────────────────────────────────────────╯
-╭─ Codex (ChatGPT) ─────────────────────────╮
-│ Week         ██████░░░░░░░░  65%  3d 12h  │
-│ Credits      workspace pool · no balance via API
-│ Today        12.3k tokens · streak 4d     │
-╰───────────────────────────────────────────╯
-╭─ OpenRouter ──────────────────────────────╮
-│ Credits      $12.34 left                  │
-╰───────────────────────────────────────────╯
- r refresh · q quit · 12s ago
-```
+<p align="center">
+  <img src="assets/demo.gif" alt="runway TUI showing live usage for Claude Max, Codex (ChatGPT) and OpenRouter" width="640">
+</p>
 
 The interface follows your terminal's light/dark theme, including terminals set to
 "system auto" that track the OS appearance (and it re-themes live when it changes).
