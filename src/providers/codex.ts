@@ -7,10 +7,12 @@ export const CODEX_TITLE = "Codex (ChatGPT)"
 const CODEX_HOME = process.env.CODEX_HOME ?? join(homedir(), ".codex")
 const AUTH_PATH = join(CODEX_HOME, "auth.json")
 const USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
+const RESET_CREDITS_URL = "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits"
 const TOKEN_URL = "https://auth.openai.com/oauth/token"
 // Public OAuth client id of the official Codex CLI
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
 const REFRESH_MARGIN_MS = 5 * 60_000
+const OPTIONAL_REQUEST_TIMEOUT_MS = 2_000
 
 function jwtExpMs(token: string): number | null {
   try {
@@ -84,6 +86,25 @@ async function fetchActivity(headers: Record<string, string>): Promise<UsageRow 
     return { label: "Today", pct: null, detail: parts.join(" · ") }
   } catch {
     return null
+  }
+}
+
+async function fetchNextResetCreditExpiry(headers: Record<string, string>): Promise<number | undefined> {
+  try {
+    const response = await fetch(RESET_CREDITS_URL, {
+      headers,
+      signal: AbortSignal.timeout(OPTIONAL_REQUEST_TIMEOUT_MS),
+    })
+    if (!response.ok) return undefined
+    const credits = (await response.json())?.credits
+    if (!Array.isArray(credits)) return undefined
+    const expiries = credits
+      .filter((credit: any) => credit?.status === "available" && typeof credit?.expires_at === "string")
+      .map((credit: any) => Date.parse(credit.expires_at))
+      .filter((expiry: number) => !Number.isNaN(expiry))
+    return expiries.length > 0 ? Math.min(...expiries) : undefined
+  } catch {
+    return undefined
   }
 }
 
@@ -176,18 +197,15 @@ export async function fetchCodex(): Promise<PanelData> {
     })
   }
 
-  // Reset credits were a 5h-window feature: with the weekly window the API
-  // reports how many are applicable separately (usually 0), so prefer that.
   const resetCredits = data?.rate_limit_reset_credits
-  const resets =
-    typeof resetCredits?.applicable_available_count === "number"
-      ? resetCredits.applicable_available_count
-      : resetCredits?.available_count
+  const resets = resetCredits?.available_count
   if (typeof resets === "number" && resets > 0) {
+    const expiresAt = await fetchNextResetCreditExpiry(headers)
     rows.push({
       label: "Resets",
       pct: null,
       detail: resets === 1 ? "1 available" : `${resets} available`,
+      expiresAt,
     })
   }
 

@@ -56,7 +56,8 @@ export function rowText(row: UsageRow, now: number, accent: string): StyledText 
   const theme = activeTheme()
   const label = row.label.padEnd(LABEL_WIDTH).slice(0, LABEL_WIDTH)
   if (row.pct === null) {
-    return t`${theme.label(label)} ${theme.text(row.detail ?? "")}`
+    const expiration = row.expiresAt === undefined ? "" : ` · next expires in ${fmtCountdown(row.expiresAt, now)}`
+    return t`${theme.label(label)} ${theme.text(`${row.detail ?? ""}${expiration}`)}`
   }
   const { fill, track } = bar(row.pct)
   const right = row.resetsAt
