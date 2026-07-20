@@ -2,10 +2,10 @@
 
 Mini TUI (built with [OpenTUI](https://opentui.com/)) that shows live usage for your
 **Claude Max** and **Codex (ChatGPT)** subscriptions — weekly limits, extra usage
-credits — plus your **OpenRouter** credit balance.
+credits — plus your **OpenRouter** and **Vercel AI Gateway** credit balances.
 
 <p align="center">
-  <img src="assets/demo.gif" alt="runway TUI showing live usage for Claude Max, Codex (ChatGPT) and OpenRouter" width="640">
+  <img src="assets/demo.gif" alt="runway TUI showing live usage for Claude Max, Codex (ChatGPT), and OpenRouter" width="640">
 </p>
 
 The interface follows your terminal's light/dark theme, including terminals set to
@@ -22,6 +22,8 @@ The interface follows your terminal's light/dark theme, including terminals set 
   `convoy auth openrouter` (a management key, which unlocks the exact balance), then
   `OPENROUTER_API_KEY`, then the key opencode already stores
   (`~/.local/share/opencode/auth.json`)
+- A **Vercel AI Gateway** credential, resolved in this order: `AI_GATEWAY_API_KEY`,
+  `VERCEL_OIDC_TOKEN`, then the Vercel key opencode already stores
 
 ## Usage
 
@@ -43,6 +45,7 @@ You can also use `bun link`, which makes `runway` available on Bun's PATH.
 | Claude Max | `GET https://api.anthropic.com/api/oauth/usage` | Bearer from the Keychain + `anthropic-beta: oauth-2025-04-20` + `User-Agent: claude-code/<v>` |
 | Codex | `GET https://chatgpt.com/backend-api/wham/usage` | Bearer from `~/.codex/auth.json` + `chatgpt-account-id` header |
 | OpenRouter | `GET https://openrouter.ai/api/v1/credits` (fallback: `/api/v1/key`) | Bearer from the Keychain, `OPENROUTER_API_KEY`, or opencode |
+| Vercel AI Gateway | `GET https://ai-gateway.vercel.sh/v1/credits` | Bearer from `AI_GATEWAY_API_KEY`, `VERCEL_OIDC_TOKEN`, or opencode |
 
 If the Codex token expires, it's refreshed against `https://auth.openai.com/oauth/token`
 (same flow and client id as the official CLI) and persisted to `auth.json`.
@@ -70,5 +73,8 @@ If the Codex token expires, it's refreshed against `https://auth.openai.com/oaut
 - OpenRouter management keys can read `/credits`, so the panel shows the exact balance
   (`total_credits − total_usage`). A regular inference key gets a 403 there and falls
   back to `/key`: the key's remaining limit, or this month's spend when the key has none.
+- Vercel AI Gateway's `/credits` endpoint reports the team's remaining balance. Local
+  OIDC tokens expire, so use an AI Gateway API key for a persistent setup.
 - Keys and tokens are only sent to `api.anthropic.com`, `chatgpt.com`,
-  `auth.openai.com`, and `openrouter.ai`. No telemetry, no third parties.
+  `auth.openai.com`, `openrouter.ai`, and `ai-gateway.vercel.sh`. No telemetry, no
+  third parties.
