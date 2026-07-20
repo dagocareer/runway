@@ -44,6 +44,7 @@ You can also use `bun link`, which makes `runway` available on Bun's PATH.
 |---|---|---|
 | Claude Max | `GET https://api.anthropic.com/api/oauth/usage` | Bearer from the Keychain + `anthropic-beta: oauth-2025-04-20` + `User-Agent: claude-code/<v>` |
 | Codex | `GET https://chatgpt.com/backend-api/wham/usage` | Bearer from `~/.codex/auth.json` + `chatgpt-account-id` header |
+| Codex reset expiries | `GET https://chatgpt.com/backend-api/wham/rate-limit-reset-credits` | Same as Codex usage |
 | OpenRouter | `GET https://openrouter.ai/api/v1/credits` (fallback: `/api/v1/key`) | Bearer from the Keychain, `OPENROUTER_API_KEY`, or opencode |
 | Vercel AI Gateway | `GET https://ai-gateway.vercel.sh/v1/credits` | Bearer from `AI_GATEWAY_API_KEY`, `VERCEL_OIDC_TOKEN`, or opencode |
 
@@ -64,7 +65,8 @@ If the Codex token expires, it's refreshed against `https://auth.openai.com/oaut
 - ChatGPT no longer has a 5h session window: the primary window **is** the weekly one
   (`limit_window_seconds: 604800`, `secondary_window: null`). Row labels follow
   `limit_window_seconds`, so the panel stays correct if the 5h window ever comes back,
-  and the old 5h reset credits only appear when the API marks them as applicable.
+  and all banked reset credits remain visible even when none applies to the current
+  window. When available, the panel also counts down to the next credit expiration.
 - Claude's extra usage arrives in cents of a dollar; it's shown as `$used / $limit`.
 - On ChatGPT Team/Business plans, Codex credits are a shared workspace pool and the API
   returns `balance: null` — the balance is only visible on the admin's billing page at
