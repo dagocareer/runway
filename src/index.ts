@@ -13,6 +13,7 @@ import {
 import { fetchClaude, CLAUDE_TITLE } from "./providers/claude"
 import { fetchCodex, CODEX_TITLE } from "./providers/codex"
 import { fetchOpenRouter, OPENROUTER_TITLE } from "./providers/openrouter"
+import { fetchVercel, VERCEL_TITLE } from "./providers/vercel"
 import type { PanelData } from "./types"
 import { rowText, noteText } from "./ui"
 import { activeTheme, setTheme } from "./theme"
@@ -29,6 +30,7 @@ const state = {
   claude: { data: { title: CLAUDE_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
   codex: { data: { title: CODEX_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
   openrouter: { data: { title: OPENROUTER_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
+  vercel: { data: { title: VERCEL_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
   lastUpdated: null as number | null,
   fetching: false,
   lastManual: 0,
@@ -37,6 +39,7 @@ const state = {
 const CLAUDE_ACCENT = "#d97757"
 const CODEX_ACCENT = "#74aa9c"
 const OPENROUTER_ACCENT = "#8b5cf6"
+const VERCEL_ACCENT = "#0070f3"
 
 const renderer = await createCliRenderer({ exitOnCtrlC: true, targetFps: 10 })
 
@@ -54,7 +57,7 @@ const container = new BoxRenderable(renderer, {
 const header = new ASCIIFontRenderable(renderer, {
   text: "Runway",
   font: "tiny",
-  color: [CLAUDE_ACCENT, CODEX_ACCENT, OPENROUTER_ACCENT],
+  color: [CLAUDE_ACCENT, CODEX_ACCENT, OPENROUTER_ACCENT, VERCEL_ACCENT],
 })
 const claudeBox = new BoxRenderable(renderer, {
   border: true,
@@ -86,11 +89,22 @@ const openRouterBox = new BoxRenderable(renderer, {
   flexDirection: "column",
   width: "100%",
 })
+const vercelBox = new BoxRenderable(renderer, {
+  border: true,
+  borderStyle: "rounded",
+  borderColor: activeTheme().border,
+  title: ` ▲ ${VERCEL_TITLE} `,
+  titleColor: VERCEL_ACCENT,
+  paddingX: 1,
+  flexDirection: "column",
+  width: "100%",
+})
 const footer = new TextRenderable(renderer, { content: "" })
 container.add(header)
 container.add(claudeBox)
 container.add(codexBox)
 container.add(openRouterBox)
+container.add(vercelBox)
 container.add(footer)
 renderer.root.add(container)
 
@@ -133,9 +147,11 @@ function draw() {
   syncPanel(claudeBox, panelLines(state.claude, now, CLAUDE_ACCENT))
   syncPanel(codexBox, panelLines(state.codex, now, CODEX_ACCENT))
   syncPanel(openRouterBox, panelLines(state.openrouter, now, OPENROUTER_ACCENT))
+  syncPanel(vercelBox, panelLines(state.vercel, now, VERCEL_ACCENT))
   claudeBox.bottomTitle = state.claude.staleNote ? ` ⚠ ${state.claude.staleNote} `.slice(0, 58) : undefined
   codexBox.bottomTitle = state.codex.staleNote ? ` ⚠ ${state.codex.staleNote} `.slice(0, 58) : undefined
   openRouterBox.bottomTitle = state.openrouter.staleNote ? ` ⚠ ${state.openrouter.staleNote} `.slice(0, 58) : undefined
+  vercelBox.bottomTitle = state.vercel.staleNote ? ` ⚠ ${state.vercel.staleNote} `.slice(0, 58) : undefined
   const updated = state.lastUpdated ? fmtAgo(state.lastUpdated, now) : "—"
   const status = state.fetching
     ? fg(CODEX_ACCENT)(` ${SPINNER[Math.floor(now / 250) % SPINNER.length]} updating`)
@@ -152,6 +168,7 @@ function applyThemeMode(mode: ThemeMode) {
   claudeBox.borderColor = border
   codexBox.borderColor = border
   openRouterBox.borderColor = border
+  vercelBox.borderColor = border
   draw()
 }
 renderer.on("theme_mode", applyThemeMode)
@@ -172,10 +189,16 @@ async function refresh() {
   state.fetching = true
   draw()
   try {
-    const [claude, codex, openrouter] = await Promise.all([fetchClaude(), fetchCodex(), fetchOpenRouter()])
+    const [claude, codex, openrouter, vercel] = await Promise.all([
+      fetchClaude(),
+      fetchCodex(),
+      fetchOpenRouter(),
+      fetchVercel(),
+    ])
     applyResult(state.claude, claude)
     applyResult(state.codex, codex)
     applyResult(state.openrouter, openrouter)
+    applyResult(state.vercel, vercel)
     state.lastUpdated = Date.now()
   } finally {
     state.fetching = false
