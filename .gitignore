@@ -2,3 +2,4 @@ node_modules/
 /runway
 *.log
 .DS_Store
+*.bun-build
