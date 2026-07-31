@@ -9,19 +9,19 @@
 // SwiftBar plugin: renders the runway providers as a menu bar item.
 // Refresh every 5 minutes via the `5m` suffix in the plugin file name.
 //
-// NOTE: imports use absolute paths because SwiftBar runs this file through a
-// symlink in its plugins folder; relative paths would resolve against the
-// symlink location instead of this repo. If the repo moves, update RUNWAY_REPO
-// and the import paths below.
-import { fetchClaude, CLAUDE_TITLE } from "/Users/davidgonzalez/code/me/runway/src/providers/claude"
-import { fetchCodex, CODEX_TITLE } from "/Users/davidgonzalez/code/me/runway/src/providers/codex"
-import { fetchOpenRouter, OPENROUTER_TITLE } from "/Users/davidgonzalez/code/me/runway/src/providers/openrouter"
-import { fetchVercel, VERCEL_TITLE } from "/Users/davidgonzalez/code/me/runway/src/providers/vercel"
-import { fetchAntigravity, ANTIGRAVITY_TITLE } from "/Users/davidgonzalez/code/me/runway/src/providers/antigravity"
-import type { UsageRow } from "/Users/davidgonzalez/code/me/runway/src/types"
+// SwiftBar runs this file through a symlink in its plugins folder. Bun resolves
+// import.meta.dir to the real file location, so the relative imports and the
+// repo root below stay correct wherever the repo lives.
+import { resolve } from "node:path"
+import { fetchClaude, CLAUDE_TITLE } from "../../src/providers/claude"
+import { fetchCodex, CODEX_TITLE } from "../../src/providers/codex"
+import { fetchOpenRouter, OPENROUTER_TITLE } from "../../src/providers/openrouter"
+import { fetchVercel, VERCEL_TITLE } from "../../src/providers/vercel"
+import { fetchAntigravity, ANTIGRAVITY_TITLE } from "../../src/providers/antigravity"
+import type { UsageRow } from "../../src/types"
 import { render, type MenuService } from "./format"
 
-const RUNWAY_REPO = "/Users/davidgonzalez/code/me/runway"
+const RUNWAY_REPO = resolve(import.meta.dir, "..", "..")
 
 const geminiFlash = (rows: UsageRow[]) => rows.find((row) => row.label === "Gemini Flash") ?? null
 
