@@ -1,5 +1,4 @@
 import { expect, test } from "bun:test"
-import { resolve } from "node:path"
 import type { PanelData } from "../src/types"
 import { menuBarText, render, type MenuService } from "../scripts/swiftbar/format"
 
@@ -7,8 +6,6 @@ const NOW = 1_752_350_000_000
 const MINUTE = 60_000
 const HOUR = 3_600_000
 const DAY = 86_400_000
-
-const OPEN_RUNWAY_SCRIPT = resolve(import.meta.dir, "..", "scripts", "swiftbar", "open-runway.sh")
 
 const claudePanel: PanelData = {
   title: "Claude Max",
@@ -115,7 +112,7 @@ test("menuBarText colors exhausted services (pct >= 100) red", () => {
 test("render emits the header line with ansi/dropdown params and a full dropdown body", () => {
   const output = render(services, NOW, {
     ansi: true,
-    openRunwayScript: OPEN_RUNWAY_SCRIPT,
+    openRunwayScript: "/Users/davidgonzalez/code/me/runway/scripts/swiftbar/open-runway.sh",
   })
   const lines = output.split("\n")
 
@@ -127,7 +124,7 @@ test("render emits the header line with ansi/dropdown params and a full dropdown
   expect(lines).toContain("Week · 100% used · resets in 4d 19h | color=#74aa9c")
   expect(lines).toContain("Credits · $0.0000 left | color=#8b5cf6")
   expect(lines).toContain("No key: set AI_GATEWAY_API_KEY or VERCEL_OIDC_TOKEN, or add Vercel to opencode | color=#8e8e93 length=64")
-  expect(lines).toContain(`Open runway | bash=${OPEN_RUNWAY_SCRIPT}`)
+  expect(lines).toContain("Open runway | bash=/Users/davidgonzalez/code/me/runway/scripts/swiftbar/open-runway.sh")
   expect(lines).toContain("Refresh now | refresh=true")
   expect(lines).toContain("Updated · now | color=#8e8e93")
   expect(output.split("\n---\n").length).toBeGreaterThan(1)
