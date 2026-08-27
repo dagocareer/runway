@@ -14,7 +14,8 @@ import { fetchClaude, CLAUDE_TITLE } from "./providers/claude"
 import { fetchCodex, CODEX_TITLE } from "./providers/codex"
 import { fetchOpenRouter, OPENROUTER_TITLE } from "./providers/openrouter"
 import { fetchLocal, LOCAL_TITLE } from "./providers/local"
-import { fetchAntigravity, ANTIGRAVITY_TITLE } from "./providers/antigravity"
+import { fetchAntigravityCliPanel, } from "./providers/antigravity.provider"
+import { ANTIGRAVITY_TITLE } from "./providers/antigravity"
 import type { PanelData } from "./types"
 import { rowText, noteText, hintText } from "./ui"
 import { activeTheme, setTheme } from "./theme"
@@ -207,7 +208,7 @@ async function refresh() {
       fetchCodex(),
       fetchOpenRouter(),
       fetchLocal(),
-      fetchAntigravity(),
+      fetchAntigravityCliPanel(),
     ])
     applyResult(state.claude, claude)
     applyResult(state.codex, codex)
