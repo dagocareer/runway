@@ -14,7 +14,6 @@ import { fetchClaude, CLAUDE_TITLE } from "./providers/claude"
 import { fetchCodex, CODEX_TITLE } from "./providers/codex"
 import { fetchOpenRouter, OPENROUTER_TITLE } from "./providers/openrouter"
 import { fetchLocal, LOCAL_TITLE } from "./providers/local"
-import { fetchVercel, VERCEL_TITLE } from "./providers/vercel"
 import { fetchAntigravity, ANTIGRAVITY_TITLE } from "./providers/antigravity"
 import type { PanelData } from "./types"
 import { rowText, noteText, hintText } from "./ui"
@@ -33,7 +32,6 @@ const state = {
   codex: { data: { title: CODEX_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
   openrouter: { data: { title: OPENROUTER_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
   local: { data: { title: LOCAL_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
-  vercel: { data: { title: VERCEL_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
   antigravity: { data: { title: ANTIGRAVITY_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
   lastUpdated: null as number | null,
   fetching: false,
@@ -45,7 +43,6 @@ const CLAUDE_ACCENT = "#d97757"
 const CODEX_ACCENT = "#74aa9c"
 const OPENROUTER_ACCENT = "#8b5cf6"
 const LOCAL_ACCENT = "#f59e0b"
-const VERCEL_ACCENT = "#0070f3"
 const ANTIGRAVITY_ACCENT = "#4285f4"
 
 const renderer = await createCliRenderer({ exitOnCtrlC: false, targetFps: 10 })
@@ -64,7 +61,7 @@ const container = new BoxRenderable(renderer, {
 const header = new ASCIIFontRenderable(renderer, {
   text: "Runway",
   font: "tiny",
-  color: [CLAUDE_ACCENT, CODEX_ACCENT, OPENROUTER_ACCENT, LOCAL_ACCENT, VERCEL_ACCENT, ANTIGRAVITY_ACCENT],
+  color: [CLAUDE_ACCENT, CODEX_ACCENT, OPENROUTER_ACCENT, LOCAL_ACCENT, ANTIGRAVITY_ACCENT],
 })
 const claudeBox = new BoxRenderable(renderer, {
   border: true,
@@ -108,13 +105,11 @@ const antigravityBox = new BoxRenderable(renderer, {
 })
 const footer = new TextRenderable(renderer, { content: "" })
 const localBox = new BoxRenderable(renderer, { border: true, borderStyle: "rounded", borderColor: activeTheme().border, title: ` ◉ ${LOCAL_TITLE} `, titleColor: LOCAL_ACCENT, paddingX: 1, flexDirection: "column", width: "100%" })
-const vercelBox = new BoxRenderable(renderer, { border: true, borderStyle: "rounded", borderColor: activeTheme().border, title: ` ▲ ${VERCEL_TITLE} `, titleColor: VERCEL_ACCENT, paddingX: 1, flexDirection: "column", width: "100%" })
 container.add(header)
 container.add(claudeBox)
 container.add(codexBox)
 container.add(openRouterBox)
 container.add(localBox)
-container.add(vercelBox)
 container.add(antigravityBox)
 container.add(footer)
 renderer.root.add(container)
@@ -164,12 +159,10 @@ function draw() {
   syncPanel(codexBox, panelLines(state.codex, now, CODEX_ACCENT))
   syncPanel(openRouterBox, panelLines(state.openrouter, now, OPENROUTER_ACCENT))
   syncPanel(localBox, panelLines(state.local, now, LOCAL_ACCENT))
-  syncPanel(vercelBox, panelLines(state.vercel, now, VERCEL_ACCENT))
   syncPanel(antigravityBox, panelLines(state.antigravity, now, ANTIGRAVITY_ACCENT))
   claudeBox.bottomTitle = state.claude.staleNote ? ` ⚠ ${state.claude.staleNote} `.slice(0, 58) : undefined
   codexBox.bottomTitle = state.codex.staleNote ? ` ⚠ ${state.codex.staleNote} `.slice(0, 58) : undefined
   openRouterBox.bottomTitle = state.openrouter.staleNote ? ` ⚠ ${state.openrouter.staleNote} `.slice(0, 58) : undefined
-  vercelBox.bottomTitle = state.vercel.staleNote ? ` ⚠ ${state.vercel.staleNote} `.slice(0, 58) : undefined
   antigravityBox.bottomTitle = state.antigravity.staleNote ? ` ⚠ ${state.antigravity.staleNote} `.slice(0, 58) : undefined
   const updated = state.lastUpdated ? fmtAgo(state.lastUpdated, now) : "—"
   const status = state.fetching
@@ -188,7 +181,6 @@ function applyThemeMode(mode: ThemeMode) {
   codexBox.borderColor = border
   openRouterBox.borderColor = border
   localBox.borderColor = border
-  vercelBox.borderColor = border
   antigravityBox.borderColor = border
   draw()
 }
@@ -210,19 +202,17 @@ async function refresh() {
   state.fetching = true
   draw()
   try {
-    const [claude, codex, openrouter, local, vercel, antigravity] = await Promise.all([
+    const [claude, codex, openrouter, local, antigravity] = await Promise.all([
       fetchClaude(),
       fetchCodex(),
       fetchOpenRouter(),
       fetchLocal(),
-      fetchVercel(),
       fetchAntigravity(),
     ])
     applyResult(state.claude, claude)
     applyResult(state.codex, codex)
     applyResult(state.openrouter, openrouter)
     applyResult(state.local, local)
-    applyResult(state.vercel, vercel)
     applyResult(state.antigravity, antigravity)
     state.lastUpdated = Date.now()
   } finally {
