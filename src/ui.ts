@@ -54,7 +54,7 @@ function paceChunk(row: UsageRow, now: number) {
 
 export function rowText(row: UsageRow, now: number, accent: string): StyledText {
   const theme = activeTheme()
-  const label = row.label.padEnd(LABEL_WIDTH).slice(0, LABEL_WIDTH)
+  const label = row.label ? row.label.padEnd(LABEL_WIDTH).slice(0, LABEL_WIDTH) : ""
   if (row.pct === null) {
     const expiration = row.expiresAt === undefined ? "" : ` · next expires in ${fmtCountdown(row.expiresAt, now)}`
     return t`${theme.label(label)} ${theme.text(`${row.detail ?? ""}${expiration}`)}`
