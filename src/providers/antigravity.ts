@@ -7,6 +7,7 @@ export const ANTIGRAVITY_TITLE = "Google Antigravity"
 const TOKEN_URL = "https://oauth2.googleapis.com/token"
 const QUOTA_URL = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels"
 const USER_QUOTA_URL = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota"
+const DEFAULT_PROJECT_ID = "rising-fact-p41fc"
 const FETCH_TIMEOUT_MS = 10_000
 
 // OAuth installed-app credentials for the token exchange come from the
@@ -46,6 +47,7 @@ export interface QuotaBucket {
 interface Account {
   email?: string
   enabled?: boolean
+  projectId?: string
   refreshToken: string
   cachedQuota?: Record<string, QuotaFamily>
 }
@@ -223,9 +225,17 @@ async function fetchAvailableModels(accessToken: string): Promise<ModelEntry[] |
   }
 }
 
-async function fetchUserQuota(accessToken: string): Promise<QuotaBucket[]> {
+async function resolveProject(accessToken: string, projectId?: string): Promise<string> {
   try {
-    const res = await fetch(USER_QUOTA_URL, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: "{}" })
+    const res = await fetch("https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", "User-Agent": "google-api-nodejs-client/9.15.1", "Client-Metadata": "ideType=ANTIGRAVITY&platform=MACOS&pluginType=GEMINI" }, body: JSON.stringify({ metadata: { ideType: "ANTIGRAVITY", platform: "MACOS", pluginType: "GEMINI", ...(projectId ? { duetProject: projectId } : {}) } }) })
+    const body = await res.json().catch(() => null)
+    return body?.cloudaicompanionProject?.id ?? body?.cloudaicompanionProject ?? projectId ?? DEFAULT_PROJECT_ID
+  } catch { return projectId ?? DEFAULT_PROJECT_ID }
+}
+
+async function fetchUserQuota(accessToken: string, project: string): Promise<QuotaBucket[]> {
+  try {
+    const res = await fetch(USER_QUOTA_URL, { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ project }) })
     if (!res.ok) return []
     const body = (await res.json()) as { buckets?: QuotaBucket[] }
     return Array.isArray(body.buckets) ? body.buckets : []
@@ -267,7 +277,7 @@ export async function fetchAntigravity(): Promise<PanelData> {
 
   const accessToken = await refreshAccessToken(account.refreshToken, credentials)
   const models = accessToken ? await fetchAvailableModels(accessToken) : null
-  const quotaBuckets = accessToken ? await fetchUserQuota(accessToken) : []
+  const quotaBuckets = accessToken ? await fetchUserQuota(accessToken, await resolveProject(accessToken, account.projectId)) : []
 
   if (models) {
     const rows = rowsFromGroups(aggregateFamilies(models), Date.now())
