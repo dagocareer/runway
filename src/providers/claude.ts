@@ -101,7 +101,7 @@ export async function fetchClaude(): Promise<PanelData> {
     })
   }
   window("Session", data.five_hour, 5 * HOUR)
-  window("Week (all models)", data.seven_day, 7 * 24 * HOUR)
+  window("Weekly", data.seven_day, 7 * 24 * HOUR)
   window("Week Opus", data.seven_day_opus, 7 * 24 * HOUR)
   window("Week Sonnet", data.seven_day_sonnet, 7 * 24 * HOUR)
 
