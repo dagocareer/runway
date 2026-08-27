@@ -4,6 +4,7 @@ import {
   classifyQuotaFamily,
   oauthCredentials,
   rowsFromGroups,
+  rowsFromQuotaBuckets,
 } from "../src/providers/antigravity"
 
 const NOW = 1_752_350_000_000
@@ -63,7 +64,7 @@ test("rowsFromGroups renders one row per family with pct and reset countdown", (
   expect(flash?.pct).toBe(29)
   expect(flash?.detail).toBe("1 model")
   expect(flash?.resetsAt).toBe(Date.parse("2026-08-01T10:00:00Z"))
-  const claude = rows.find((r) => r.label === "Claude")
+  const claude = rows.find((r) => r.label === "Claude & GPT")
   expect(claude?.pct).toBe(0)
 })
 
@@ -74,4 +75,13 @@ test("oauthCredentials requires both ANTIGRAVITY_CLIENT_ID and ANTIGRAVITY_CLIEN
   expect(
     oauthCredentials({ ANTIGRAVITY_CLIENT_ID: "client-id", ANTIGRAVITY_CLIENT_SECRET: "client-secret" }),
   ).toEqual({ clientId: "client-id", clientSecret: "client-secret" })
+})
+
+test("renders weekly and five-hour quota buckets by model group", () => {
+  const rows = rowsFromQuotaBuckets([
+    { modelId: "gemini-3-flash", remainingFraction: 0.9822, resetTime: "2026-09-01T10:00:00Z", window: "weekly" },
+    { modelId: "gemini-3-flash", remainingFraction: 0.991, resetTime: "2026-08-28T10:00:00Z", window: "five_hour" },
+    { modelId: "claude-opus-4", remainingFraction: 1, window: "weekly" },
+  ])
+  expect(rows.map((row) => row.label)).toEqual(["Gemini Models Weekly", "Gemini Models Five Hour", "Claude & GPT Weekly"])
 })
