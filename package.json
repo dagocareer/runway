@@ -10,6 +10,7 @@
   },
   "scripts": {
     "start": "bun src/index.ts",
+    "local-proxy": "bun src/local-proxy.ts",
     "build": "bun build ./src/index.ts --compile --outfile runway",
     "typecheck": "tsc --noEmit",
     "test": "bun test && bun run typecheck"

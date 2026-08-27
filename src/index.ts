@@ -13,6 +13,7 @@ import {
 import { fetchClaude, CLAUDE_TITLE } from "./providers/claude"
 import { fetchCodex, CODEX_TITLE } from "./providers/codex"
 import { fetchOpenRouter, OPENROUTER_TITLE } from "./providers/openrouter"
+import { fetchLocal, LOCAL_TITLE } from "./providers/local"
 import { fetchVercel, VERCEL_TITLE } from "./providers/vercel"
 import { fetchAntigravity, ANTIGRAVITY_TITLE } from "./providers/antigravity"
 import type { PanelData } from "./types"
@@ -31,20 +32,23 @@ const state = {
   claude: { data: { title: CLAUDE_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
   codex: { data: { title: CODEX_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
   openrouter: { data: { title: OPENROUTER_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
+  local: { data: { title: LOCAL_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
   vercel: { data: { title: VERCEL_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
   antigravity: { data: { title: ANTIGRAVITY_TITLE, rows: [], note: "Loading…" }, staleNote: null } as PanelState,
   lastUpdated: null as number | null,
   fetching: false,
   lastManual: 0,
 }
+let shuttingDown = false
 
 const CLAUDE_ACCENT = "#d97757"
 const CODEX_ACCENT = "#74aa9c"
 const OPENROUTER_ACCENT = "#8b5cf6"
+const LOCAL_ACCENT = "#f59e0b"
 const VERCEL_ACCENT = "#0070f3"
 const ANTIGRAVITY_ACCENT = "#4285f4"
 
-const renderer = await createCliRenderer({ exitOnCtrlC: true, targetFps: 10 })
+const renderer = await createCliRenderer({ exitOnCtrlC: false, targetFps: 10 })
 
 // Terminal theme (light/dark). On terminals set to "system auto" this follows
 // the OS appearance. We briefly wait for detection so the first frame already
@@ -60,7 +64,7 @@ const container = new BoxRenderable(renderer, {
 const header = new ASCIIFontRenderable(renderer, {
   text: "Runway",
   font: "tiny",
-  color: [CLAUDE_ACCENT, CODEX_ACCENT, OPENROUTER_ACCENT, VERCEL_ACCENT, ANTIGRAVITY_ACCENT],
+  color: [CLAUDE_ACCENT, CODEX_ACCENT, OPENROUTER_ACCENT, LOCAL_ACCENT, VERCEL_ACCENT, ANTIGRAVITY_ACCENT],
 })
 const claudeBox = new BoxRenderable(renderer, {
   border: true,
@@ -92,16 +96,6 @@ const openRouterBox = new BoxRenderable(renderer, {
   flexDirection: "column",
   width: "100%",
 })
-const vercelBox = new BoxRenderable(renderer, {
-  border: true,
-  borderStyle: "rounded",
-  borderColor: activeTheme().border,
-  title: ` ▲ ${VERCEL_TITLE} `,
-  titleColor: VERCEL_ACCENT,
-  paddingX: 1,
-  flexDirection: "column",
-  width: "100%",
-})
 const antigravityBox = new BoxRenderable(renderer, {
   border: true,
   borderStyle: "rounded",
@@ -113,10 +107,13 @@ const antigravityBox = new BoxRenderable(renderer, {
   width: "100%",
 })
 const footer = new TextRenderable(renderer, { content: "" })
+const localBox = new BoxRenderable(renderer, { border: true, borderStyle: "rounded", borderColor: activeTheme().border, title: ` ◉ ${LOCAL_TITLE} `, titleColor: LOCAL_ACCENT, paddingX: 1, flexDirection: "column", width: "100%" })
+const vercelBox = new BoxRenderable(renderer, { border: true, borderStyle: "rounded", borderColor: activeTheme().border, title: ` ▲ ${VERCEL_TITLE} `, titleColor: VERCEL_ACCENT, paddingX: 1, flexDirection: "column", width: "100%" })
 container.add(header)
 container.add(claudeBox)
 container.add(codexBox)
 container.add(openRouterBox)
+container.add(localBox)
 container.add(vercelBox)
 container.add(antigravityBox)
 container.add(footer)
@@ -158,6 +155,7 @@ function fmtAgo(since: number, now: number): string {
 }
 
 function draw() {
+  if (shuttingDown) return
   const now = Date.now()
   // `text` carries an explicit fg: keybind letters use `bold` alone, and
   // OpenTUI's default foreground is white — invisible on a light terminal.
@@ -165,6 +163,7 @@ function draw() {
   syncPanel(claudeBox, panelLines(state.claude, now, CLAUDE_ACCENT))
   syncPanel(codexBox, panelLines(state.codex, now, CODEX_ACCENT))
   syncPanel(openRouterBox, panelLines(state.openrouter, now, OPENROUTER_ACCENT))
+  syncPanel(localBox, panelLines(state.local, now, LOCAL_ACCENT))
   syncPanel(vercelBox, panelLines(state.vercel, now, VERCEL_ACCENT))
   syncPanel(antigravityBox, panelLines(state.antigravity, now, ANTIGRAVITY_ACCENT))
   claudeBox.bottomTitle = state.claude.staleNote ? ` ⚠ ${state.claude.staleNote} `.slice(0, 58) : undefined
@@ -188,6 +187,7 @@ function applyThemeMode(mode: ThemeMode) {
   claudeBox.borderColor = border
   codexBox.borderColor = border
   openRouterBox.borderColor = border
+  localBox.borderColor = border
   vercelBox.borderColor = border
   antigravityBox.borderColor = border
   draw()
@@ -210,16 +210,18 @@ async function refresh() {
   state.fetching = true
   draw()
   try {
-    const [claude, codex, openrouter, vercel, antigravity] = await Promise.all([
+    const [claude, codex, openrouter, local, vercel, antigravity] = await Promise.all([
       fetchClaude(),
       fetchCodex(),
       fetchOpenRouter(),
+      fetchLocal(),
       fetchVercel(),
       fetchAntigravity(),
     ])
     applyResult(state.claude, claude)
     applyResult(state.codex, codex)
     applyResult(state.openrouter, openrouter)
+    applyResult(state.local, local)
     applyResult(state.vercel, vercel)
     applyResult(state.antigravity, antigravity)
     state.lastUpdated = Date.now()
@@ -230,12 +232,15 @@ async function refresh() {
 }
 
 function quit() {
+  if (shuttingDown) return
+  shuttingDown = true
   renderer.destroy()
   process.exit(0)
 }
 
 renderer.keyInput.on("keypress", (key) => {
   if (key.name === "q") quit()
+  if (key.name === "c" && key.ctrl) quit()
   if (key.name === "r" && Date.now() - state.lastManual > MANUAL_THROTTLE_MS) {
     state.lastManual = Date.now()
     void refresh()
