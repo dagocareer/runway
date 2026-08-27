@@ -238,6 +238,8 @@ export async function fetchAntigravity(): Promise<PanelData> {
 
   if (models) {
     const rows = rowsFromGroups(aggregateFamilies(models), Date.now())
+    const resets = rows.map((row) => row.resetsAt).filter((value): value is number => value !== undefined)
+    if (resets.length > 0) rows.push({ label: "Reset", pct: null, detail: "next quota window", expiresAt: Math.min(...resets) })
     if (rows.length > 0) return { title, rows }
     return { title, rows: [], note: "No quota groups in the Antigravity response" }
   }

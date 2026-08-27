@@ -105,6 +105,11 @@ export async function fetchClaude(): Promise<PanelData> {
   window("Week Opus", data.seven_day_opus, 7 * 24 * HOUR)
   window("Week Sonnet", data.seven_day_sonnet, 7 * 24 * HOUR)
 
+  const resets = rows.map((row) => row.resetsAt).filter((value): value is number => value !== undefined)
+  if (resets.length > 0) rows.push({ label: "Reset", pct: null, detail: "next window", expiresAt: Math.min(...resets) })
+  const today = data.today
+  if (today && typeof today.tokens === "number") rows.push({ label: "Today", pct: null, detail: `${today.tokens.toLocaleString("en-US")} tokens` })
+
   const extra = data.extra_usage
   if (extra?.is_enabled) {
     const used = typeof extra.used_credits === "number" ? extra.used_credits : null
