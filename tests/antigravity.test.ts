@@ -63,7 +63,7 @@ test("rowsFromGroups renders one row per family with pct and reset countdown", (
   expect(flash?.pct).toBe(29)
   expect(flash?.detail).toBe("1 model")
   expect(flash?.resetsAt).toBe(Date.parse("2026-08-01T10:00:00Z"))
-  const claude = rows.find((r) => r.label === "Claude")
+  const claude = rows.find((r) => r.label === "Claude & GPT")
   expect(claude?.pct).toBe(0)
 })
 

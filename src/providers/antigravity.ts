@@ -121,7 +121,7 @@ export function rowsFromGroups(groups: Record<string, QuotaFamily>, _now: number
     if (!group) continue
     const resetTimestamp = parseResetTime(group.resetTime)
     rows.push({
-      label: FAMILY_LABELS[family],
+      label: family === "claude" ? "Claude & GPT" : FAMILY_LABELS[family],
       // runway pct = % used, so invert the remaining fraction
       pct: group.remainingFraction === undefined ? null : 100 - Math.round(group.remainingFraction * 100),
       detail: `${group.modelCount} ${group.modelCount === 1 ? "model" : "models"}`,
