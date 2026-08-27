@@ -24,6 +24,11 @@ The interface follows your terminal's light/dark theme, including terminals set 
   (`~/.local/share/opencode/auth.json`)
 - A **Vercel AI Gateway** credential, resolved in this order: `AI_GATEWAY_API_KEY`,
   `VERCEL_OIDC_TOKEN`, then the Vercel key opencode already stores
+- A **Google Antigravity** account signed in through the `opencode-antigravity-auth`
+  plugin (reads `~/.config/opencode/antigravity-accounts.json`), plus the OAuth
+  installed-app credentials that account was issued under, provided as
+  `ANTIGRAVITY_CLIENT_ID` and `ANTIGRAVITY_CLIENT_SECRET` (the same values the plugin
+  uses; not hardcoded here so they never end up in the repo)
 
 ## Usage
 
@@ -47,6 +52,7 @@ You can also use `bun link`, which makes `runway` available on Bun's PATH.
 | Codex reset expiries | `GET https://chatgpt.com/backend-api/wham/rate-limit-reset-credits` | Same as Codex usage |
 | OpenRouter | `GET https://openrouter.ai/api/v1/credits` (fallback: `/api/v1/key`) | Bearer from the Keychain, `OPENROUTER_API_KEY`, or opencode |
 | Vercel AI Gateway | `GET https://ai-gateway.vercel.sh/v1/credits` | Bearer from `AI_GATEWAY_API_KEY`, `VERCEL_OIDC_TOKEN`, or opencode |
+| Google Antigravity | `POST https://oauth2.googleapis.com/token` (refresh), `POST https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | OAuth refresh token from `~/.config/opencode/antigravity-accounts.json` + `ANTIGRAVITY_CLIENT_ID` / `ANTIGRAVITY_CLIENT_SECRET` |
 
 If the Codex token expires, it's refreshed against `https://auth.openai.com/oauth/token`
 (same flow and client id as the official CLI) and persisted to `auth.json`.
