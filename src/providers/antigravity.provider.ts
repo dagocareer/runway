@@ -39,8 +39,22 @@ export function parseOutput(rawText: string): AntigravityUsageReport {
 }
 
 export class AntigravityCliProvider implements IQuotaProvider<AntigravityUsageReport> {
+  private getBinaryPath(): string | null {
+    const configured = process.env.ANTIGRAVITY_BIN_PATH
+    if (configured) return configured
+    const resolved = Bun.which("antigravity")
+    if (resolved) return resolved
+    return null
+  }
+
+  async isAvailable(): Promise<boolean> {
+    return this.getBinaryPath() !== null
+  }
+
   async fetch(): Promise<AntigravityUsageReport> {
-    const process = Bun.spawn(["antigravity", "usage"], { stdout: "pipe", stderr: "pipe" })
+    const binary = this.getBinaryPath()
+    if (!binary) throw new AntigravityUsageError("Antigravity CLI not found; using API quota fallback")
+    const process = Bun.spawn([binary, "usage"], { stdout: "pipe", stderr: "pipe" })
     const [stdout, stderr] = await Promise.all([new Response(process.stdout).text(), new Response(process.stderr).text()])
     const exitCode = await process.exited
     if (exitCode !== 0) throw new AntigravityUsageError(`antigravity usage failed (${exitCode}): ${stderr.trim()}`)
